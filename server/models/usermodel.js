@@ -36,6 +36,6 @@ const userSchema=new mongoose.Schema({
     }
 })
     //    here we are useing or opertor checkomg user exist or not . if not then create and call
-const  user= mongoose.models.user||Mongoose.model('user',userSchema);
+const  userModel= mongoose.models.user||Mongoose.model('user',userSchema);
 
-export default user;
+export default userModel;
