@@ -16,3 +16,10 @@
   }
  };
  export default connectDB;
+
+
+// ***********************
+// const connectdb= async ()=>{
+
+//     await mongoose.connect(`{url}/project-name`)
+// }

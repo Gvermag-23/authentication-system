@@ -1,13 +1,15 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import userModel from '../models/userModel.js';
-import { use } from 'react';
+
+import transporter from '../config/nodemailer.js'
 
 
 // user registratiion controller function
 export const register= async(req,res)=>{
     const {name, email,password}=req.body
-
+    console.log(req.body);
+    
     if(!name||!email||!password){
         return res.json({success:false,message:'missing detailed'})
     }
@@ -33,9 +35,155 @@ export const register= async(req,res)=>{
             sameSite:process.env.NODE_ENV==='production'?'none':'strict',
             maxAge:7*24 *60*60*1000
         })
+// WE ARE SEDING EMAIL BEFORE RENDNG THE SUCEES FUL RESPONSE
+        
+//sending welcome emal
+        const mailOptions={
+             from:process.env.SENDER_EMAIL,
+             
+             to:email,
+             subject:'welcome to my authentication system',
+             text:`welcome to my authentucation system your acccount is created with this email id ${email}`
+
+        }
+        await transporter.sendMail(mailOptions);
+
+         return res.json({success:true});
 
     } catch (error) {
         res.json({success:false,message:error.message})
     }
 }
+
 // --------------------------------
+// here we are making login control function which help to 
+// check login credintial and accces
+
+export const login=async(req,res)=>{
+    const {email,password}=req.body;
+ 
+    if(!email||!password){
+        return res.json({success:false,message:'email and password are required'})
+    }
+
+    try {
+        const user= await userModel.findOne({email});
+
+        if(!user){
+            return res.json({success:false,message:'imvalid email'})
+        }
+        const isMatch=await bcrypt.compare(password,user.password)
+        
+        if(!isMatch){
+             return res.json({success:false,message:'imvalid password'})
+        }
+
+         const token=jwt.sign({id:user._id},process.env.JWT_SECRET,{ expiresIn:'7d'});
+
+        res.cookie('token',token ,{ 
+            httpOnly:true,
+            secure: process.env.NODE_ENV==='production',
+            sameSite: process.env.NODE_ENV==='production'?'none':'strict',
+            maxAge:7*24 *60*60*1000,
+            path:'/'
+            
+        })
+        return res.json({success:true});
+
+
+    } catch (error) {
+        return res.json({success:false,message:error.message})
+    }
+}
+
+// -----------------------------------------
+// making logout controller
+export const logout =async( req,res)=>{
+
+    try {
+        res.clearCookie('token',{
+              httpOnly:true,
+            secure:process.env.NODE_ENV==='production',
+            sameSite:process.env.NODE_ENV==='production'?'none':'strict',
+                 
+
+            path:'/'
+            
+        });
+        return res.json({success:true,message:'logged out'});
+
+    } catch (error) {
+        return res.json({success:false,message:error.message});
+    }
+}
+
+
+
+// ***************** VERIFICATION*******
+// send otp to users email
+export const sendVerifyOtp=async(req,res)=>{
+    try {
+        const {userId}=req.body;
+        const user=await userModel.findById(userId);
+
+        if(user.isAccountVerified){
+            return res.json({success:false,message:"account is alrraeay verifed"})
+        }
+        // TO GERNATE OTP  6digt
+        const otp= String(Math.floor(100000+ Math.random()*900000));
+
+        user.verifyOtp=otp;
+        //1day expory
+         user.verifyOtpExpireAt=Date.now()+24*60*60*1000
+
+         await user.save();
+
+         const mailOptions={
+             from:process.env.SENDER_EMAIL,
+             to:user.email,
+             subject:'account verfication otp',
+             text:`your otp is  ${otp}. verify your account using this otp`
+
+         }
+         await transporter.sendMail(mailOptions);
+       return  res.json({success:true,message:"verfication otp is send on your email"});
+
+    } catch (error) {
+      return  res.json({success:false,message:"u enter the wrong otp"});
+    }
+}
+
+// *********************
+export const verifiyEmail=async(req,res)=>{
+     const {userId,otp}=req.body;
+
+     if(!userId||!otp){
+      return  res.json({success:false,message:"missing details of id or otp"})
+     }
+     try {
+        const user=await userModel.findById(userId);
+        if(!user){
+           return res.json({success:false,message:"user not found"}); 
+        }
+        if(user.verifyOtp===''||user.verifyOtp!==otp){
+            return res.json({success:false,message:'invalid otp'});
+        }
+        // chckiking otp expirty time 
+        if(user.verifyOtpExpireAt<Date.now()){
+            return res.json({success:false,message:'otpis expired'});
+        }
+        // account verifaction true krdiye hai.
+        user.isAccountVerified=true;
+        user.verifyOtp='';
+        user.verifyOtpExpireAt=0;
+
+        await user.save();
+        return res.json({success:true,message:'email verified succesfully'});
+
+        
+     } catch (error) {
+      return  res.json({success:false,message:error.message})
+
+     }
+
+}

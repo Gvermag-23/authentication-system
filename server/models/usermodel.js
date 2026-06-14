@@ -1,5 +1,5 @@
 
-import mongoose, { Mongoose } from "mongoose";
+import mongoose, { mongo }  from "mongoose";
 const userSchema=new mongoose.Schema({
     name:{
         type:String,
@@ -24,7 +24,7 @@ const userSchema=new mongoose.Schema({
     },
      isAccountVerified:{
         type:Boolean,
-        default:'false'
+        default:false
     },
      resetOtp:{
         type:String,
@@ -33,9 +33,10 @@ const userSchema=new mongoose.Schema({
     resetOtpExpireAt:{
         type:Number,
         default:'0'
-    }
+    } 
 })
-    //    here we are useing or opertor checkomg user exist or not . if not then create and call
-const  userModel= mongoose.models.user||Mongoose.model('user',userSchema);
+
+//    here we are useing or opertor checkomg user exist or not . if not then create and call
+const  userModel= mongoose.models.user||mongoose.model('user',userSchema);
 
 export default userModel;

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "backend project",
   "license": "ISC",
-  "author": "",
+  "author": "", 
   "type": "module",
   "main": "server.js",
   "scripts": {
