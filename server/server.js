@@ -5,6 +5,8 @@ import 'dotenv/config';
 import cookieParser from "cookie-parser";
 import connectDB from "./config/mongodb.js";
 import authRouter from './routes/authRoute.js'
+import userRouter from "./routes/userRoute.js";
+
 
 const app=express();
 const port=process.env.PORT||4000
@@ -22,6 +24,7 @@ app.get('/',(req,res)=>{
  res.send("api workiong");
 })
 app.use('/api/auth',authRouter);
+app.use('/api/user',userRouter);
 
 
 

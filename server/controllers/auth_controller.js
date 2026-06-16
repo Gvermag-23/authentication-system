@@ -131,9 +131,11 @@ export const sendVerifyOtp=async(req,res)=>{
         }
         // TO GERNATE OTP  6digt
         const otp= String(Math.floor(100000+ Math.random()*900000));
+// console.log("Generated OTP:", otp);
+// console.log("Sending mail to:", user.email);
 
         user.verifyOtp=otp;
-        //1day expory
+        //1day expory 1day
          user.verifyOtpExpireAt=Date.now()+24*60*60*1000
 
          await user.save();
@@ -145,6 +147,9 @@ export const sendVerifyOtp=async(req,res)=>{
              text:`your otp is  ${otp}. verify your account using this otp`
 
          }
+        //  const info = await transporter.sendMail(mailOptions);
+// 
+// console.log("Mail sent:", info.messageId);
          await transporter.sendMail(mailOptions);
        return  res.json({success:true,message:"verfication otp is send on your email"});
 
@@ -153,7 +158,7 @@ export const sendVerifyOtp=async(req,res)=>{
     }
 }
 
-// *********************
+// *********************VERIFY EAMIL USNG OTP***********
 export const verifiyEmail=async(req,res)=>{
      const {userId,otp}=req.body;
 
@@ -186,4 +191,92 @@ export const verifiyEmail=async(req,res)=>{
 
      }
 
+}
+
+
+// IS AUTHTNTICATIONS: check if user is authenticates or not
+export const isAuthenticated=async(req,res)=>{
+
+    try {
+         return res.json({success:true});
+    } catch (error) {
+        return res.json({success:false,message:error.message})
+    }
+}
+// *******************send password reset otp
+
+export const sendResetOtp=async(req,res)=>{
+    const {email}=req.body;
+
+    if(!email){
+        return res.json({success:false,message:"email is requierd"});
+
+    }
+
+    try {
+        const user=await userModel.findOne({email});
+        if(!user){
+            return res.json({success:false,message:error.message});
+        }
+         
+           // TO GERNATE OTP  6digt
+        const otp= String(Math.floor(100000+ Math.random()*900000));
+
+        user.resetOtp=otp;
+        //1day expory 15min
+         user.resetOtpExpireAt=Date.now()+15*60*1000
+
+         await user.save();
+
+         const mailOptions={
+             from:process.env.SENDER_EMAIL,
+             to:user.email,
+             subject:'password reset  otp',
+             text:`your otp for resettinh your password is  ${otp}. uset this otp to proccess with resetting your password `
+         }
+         await transporter.sendMail(mailOptions);
+         return res.json({success:true,message:"otp send to ypur email"});
+
+    } catch (error) {
+        return res.json({success:false,message:error.message})
+    }
+}
+
+
+// **********user can verify the optp and reset the password
+
+export const resetPassword=async(req,res)=>{
+    const {email,otp,newPassword}=req.body;
+
+    if(!email||!otp||!newPassword){
+         return res.json({success:false,message:"email and otp and pass are requird"})
+    }
+
+    try {
+        const user=await userModel.findOne({email});
+        console.log(email);
+        if(!user){
+             return res.json({success:false,message:"user not found"})
+
+        }
+        if(user.resetOtp===""||user.resetOtp!==otp){
+            console.log("your otp",otp);
+             return res.json({success:false,message:"invalid otp"})
+        }
+        if(user.resetOtpExpireAt<Date.now()){
+             return res.json({success:false,message:"otp is expired"});
+        }
+
+        //encrpting new pass before saving
+        const hashedPassword=await bcrypt.hash(newPassword,10);
+        user.password=hashedPassword;
+        user.resetOtp="";
+        user.resetOtpExpireAt=0;
+        
+        await user.save();
+         return res.json({success:true,message:"password is cahnge and saved"})
+
+    } catch (error) {
+         return res.json({success:false,message:error.message})
+    }
 }
